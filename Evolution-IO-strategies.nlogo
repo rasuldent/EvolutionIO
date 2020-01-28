@@ -225,13 +225,7 @@ to allocate-IO-funds
   set IO-wealth IO-wealth - investible
   initialize-investments
   if (allocation-strategy = "number one priority") [invest-in-first-priority investible]
-  ;ignore these options because we are focusing on number one priority and they haven't been updated to be compatible with instant-runoff voting
-  ;if (allocation-strategy = "last priority") [ invest-in-last-priority investible]
-  ;if (allocation-strategy = "even split") [ split-funds-evenly investible]
-  ;; contribute to each issue according to the percentage of votes it has out of votes for the current agenda
-  ;if (allocation-strategy = "vote proportion") [ split-by-vote-proportion investible]
   ]
-
   [
     ask members [ set IO-investments zero-all-issues ] ;IO has no money to invest so there payoffs must be 0
   ]
@@ -796,7 +790,7 @@ CHOOSER
 144
 allocation-strategy
 allocation-strategy
-"number one priority" "even split" "vote proportion"
+"number one priority"
 0
 
 PLOT
