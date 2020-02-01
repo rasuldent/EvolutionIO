@@ -1,5 +1,4 @@
 extensions[
-  py
   table
 ] ;a table in Netlogo is a dictionary data structure
 
@@ -360,29 +359,6 @@ end
 ;Put all available funds toward whichever issue got the most votes
 to invest-in-first-priority [ funds ]
   set IO-investments replace-item (index first IO-priorities) IO-investments funds
-end
-
-;Put all available funds toward whichever issue got the most votes - this option exists mainly for identifying lower bounds
-;is not intended to be an actual representation of how an organization would make decisions.
-to invest-in-last-priority [ funds ]
-  set IO-investments replace-item (index last IO-priorities) IO-investments funds
-end
-
-;Put the same amount toward each issue on the current agenda. There may be slight floating-point roundoff errors
-;which can be mitigated if necessary by changing the loop to subtract from available funds for each issue until exhaustion.
-to split-funds-evenly [funds]
-  foreach IO-priorities
-  [ issue -> set IO-investments replace-item (index issue) IO-investments (funds / scope)]
-end
-
-to split-by-vote-proportion [ funds ]
-    let agenda-votes 0
-    foreach IO-priorities
-    [
-      issue -> set agenda-votes agenda-votes + (table:get priority-votes issue)
-    ]
-    foreach IO-priorities
-    [ issue -> set IO-investments replace-item (index issue) IO-investments (funds * (table:get priority-votes issue) / agenda-votes) ]
 end
 
 ;Members that want to leave leave and non-members that want to join join
