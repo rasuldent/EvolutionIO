@@ -202,17 +202,13 @@ to-report my-ordered-priorities
 end
 
 ;observer context
-;A way to relate the IO's cost of operation with the size of the organization. There are four general categories of growth...
-;1. The costs never vary at all "uniform"
-;2. Each additional
-;3. Each The additional cost does not rise as fast as
-;4. The marginal cost slightly accelerates as the member count increases
+;A way to relate the IO's cost of operation with the size of the organization.
+;1. "uniform" The costs never vary at all
+;2. "linear" Each additional member increases the cost by the same amount
 to-report IO-variable-cost
   let n count members
   if IO-costs-type = "uniform" [ report 0 ]
-  if IO-costs-type = "root" [ report 2 * sqrt ( n)]
-  if IO-costs-type = "linear" [report n ]
-  if IO-costs-type = "linearithmic" [report (n / 2 * log (n + 1 ) 10  )]
+  if IO-costs-type = "linear" [report n / 2 ]
 end
 
 to allocate-IO-funds
@@ -428,10 +424,9 @@ to-report calculated-utility
   report ut * w + my-income - my-IO-contribution
 end
 
+;In more specialized simulations, we will be able to experiment with having variable issue costs, but for now to simplify things all the issues have the same cost
 to-report issue-cost [issue]
-  if (issue = "security")[report count members ]
-  if (issue = "trade" or issue = "culture")[report count members ]
-  if (issue = "human-rights" or issue = "environment")[report count members ]
+  report count members
 end
 
 to-report issue-benefit[issue]
@@ -610,7 +605,7 @@ IO-fixed-cost
 IO-fixed-cost
 0
 100
-0.0
+1.0
 1
 1
 NIL
@@ -676,7 +671,7 @@ CHOOSER
 IO-costs-type
 IO-costs-type
 "uniform" "root" "linear" "linearithmic"
-2
+0
 
 SLIDER
 617
