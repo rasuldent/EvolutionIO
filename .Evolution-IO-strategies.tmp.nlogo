@@ -971,10 +971,10 @@ Issue-cost-type
 1
 
 CHOOSER
-533
-58
-682
-103
+543
+88
+692
+133
 optimization-resolution
 optimization-resolution
 1 0.5 0.1
