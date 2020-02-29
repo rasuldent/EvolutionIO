@@ -22,6 +22,7 @@ globals [
   priority-votes; a table containing the current votes for each issue
   possible-membership-rules; for now, a list of membership rules for states to choose from
   active-membership-rules; the membership rules that are currently being used
+  defection-limit
 ]
 
 turtles-own [
@@ -42,7 +43,8 @@ members-own [
   my-IO-payoffs ;how much the IO pays off for each issue area
   my-priority-vote ; the issue the state tells the IO to focus on
   my-membership-vote
-  my-contribution-strategy
+  eligible-for-payout ; a boolean for whether or not the state was caught contributing less than the minimum
+  my-times-caught ; how many times the state has been caught defecting
 ]
 
 ;Clear board, generate states according to distributions andform IO based on initial parameters
@@ -61,9 +63,11 @@ end
 ;The organization does not have any autonomy and follows the determined rules exactly.
 to go
   if (IO-wealth <= 0 or (ticks >= simulation-length) or count members <= 1) [stop] ;stop if the IO goes bankrupt or time runs out
+  if (defection-limit-type = "exo") [set defection-limit default-permitted-defections ]
   vote-rules-and-agenda ; can turn off voting by commenting this line out
   ask members [
     clear-payoffs
+    set eligible-for-payout true
     decide-contribution
   ]
   set IO-revenue 0
@@ -151,8 +155,8 @@ to-report my-expected-utility-single [requested proposed]
   if (funds >= issue-cost x)
   [set expected-payout-single-issue (item (index x) my-priorities / 20 * (issue-benefit x * funds / count members))]
 
-  let defection-percent (requested - proposed) / requested
-  let w 1 - (defection-percent * my-shadow-future) ;an estimate of future harm that might come from short-term gain
+  let dp defection-percent proposed
+  let w 1 - (dp * my-shadow-future) ;an estimate of future harm that might come from short-term gain
   let EV-investment (expected-payout-single-issue - proposed) * w
   let remaining my-income - proposed ;assume that any leftover funds have a utility of 1:1
   report  EV-investment + remaining
@@ -214,14 +218,12 @@ to allocate-IO-funds
   set IO-operating-cost (IO-fixed-cost + IO-variable-cost)
   set IO-wealth IO-wealth + IO-revenue - IO-operating-cost
   let investible IO-wealth - 1
-  ifelse (investible >= 1)
+  set IO-investments zero-all-issues
+  if (investible >= 1)
   [
-    set IO-wealth IO-wealth - investible
+  set IO-wealth IO-wealth - investible
   initialize-investments
   if (allocation-strategy = "first priority") [invest-in-first-priority investible]
-  ]
-  [
-    ask members [ set IO-investments zero-all-issues ] ;IO has no money to invest so there payoffs must be 0
   ]
 end
 
@@ -241,24 +243,39 @@ end
 ;turtle context
 ;first check that there are members and then analyze various attributes of the candidates
 to-report meet-criteria
-  report true
-  ;report item index first IO-priorities my-priorities >= 25 ;
+  ;report true
+  report item index first IO-priorities my-priorities >= 25 ;
 end
 
 ;observer context
 to pay-member-states
   ; defection needs to be caught before dispersal
-  ask members [
-    if ( my-IO-contribution < min-contribution and random-float 1.0 < catch-defection-rate)
-    [leave-institution]
-  ]
+  punish-defectors
   foreach IO-priorities [
     priority -> let funds investment-in priority
     let cost issue-cost priority
     let payout 0
-    if (any? members and funds >= cost )
+    if (any? members with [ eligible-for-payout] and funds >= cost )
     [set payout (funds * issue-benefit priority) / count members]
-    ask members [ set my-IO-payoffs replace-item (index priority) my-IO-payoffs payout ]
+    ask members with [eligible-for-payout] [ set my-IO-payoffs replace-item (index priority) my-IO-payoffs payout ]
+  ]
+end
+
+to punish-defectors
+    ; defection needs to be caught before dispersal
+  ask members [
+    if (random-float 1.0 < catch-defection-rate) ;if states get caught contributing less than the minimum they get punished
+    [
+      ifelse (my-IO-contribution < min-contribution)
+      [
+      set eligible-for-payout false
+      set my-times-caught my-times-caught + 1]
+      ;else
+      [
+        set my-times-caught my-times-caught + defection-percent my-IO-contribution
+      ]
+    if (my-times-caught > defection-limit) [leave-institution] ;
+    ]
   ]
 end
 
@@ -423,9 +440,13 @@ to-report calculated-utility
   let ut 0
   ;weight each payoff by how much the priority deviates from a "neutral" value
   (foreach my-priorities my-IO-payoffs [[ weight payoff ] -> set ut ut + (weight * payoff / 20)])
-  let defection-percent (state-income - my-IO-contribution) / state-income
-  let w 1 - (defection-percent * my-shadow-future) ;an estimate of future harm that might come from short-term gain
+  let dp defection-percent my-IO-contribution
+  let w 1 - (dp * my-shadow-future) ;an estimate of future harm that might come from short-term gain
   report ut * w + my-income - my-IO-contribution
+end
+
+to-report defection-percent [my-contribution]
+  report (state-income - my-contribution) / state-income
 end
 
 ;In more specialized simulations, we will be able to experiment with having variable issue costs, but for now to simplify things all the issues have the same cost
@@ -548,7 +569,7 @@ initial-membership-count
 initial-membership-count
 2
 100
-84.0
+24.0
 1
 1
 NIL
@@ -593,7 +614,7 @@ mutation-rate
 mutation-rate
 0
 .5
-0.11
+0.1
 .01
 1
 NIL
@@ -700,7 +721,7 @@ priority-vote-rate
 priority-vote-rate
 1
 100
-10.0
+25.0
 1
 1
 NIL
@@ -828,10 +849,10 @@ NIL
 HORIZONTAL
 
 CHOOSER
-983
-180
-1121
-225
+581
+120
+719
+165
 vote-type
 vote-type
 "plurality" "instant runoff"
@@ -846,7 +867,7 @@ state-type-ratio
 state-type-ratio
 0
 1
-0.7
+1.0
 .01
 1
 NIL
@@ -861,7 +882,7 @@ inhibited-shadow-future
 inhibited-shadow-future
 0
 1
-1.0
+0.79
 .01
 1
 NIL
@@ -876,7 +897,7 @@ uninhibited-shadow-future
 uninhibited-shadow-future
 0
 1
-0.85
+0.75
 .05
 1
 NIL
@@ -891,7 +912,7 @@ benefit-multiplier
 benefit-multiplier
 0
 10
-3.8
+3.5
 .1
 1
 NIL
@@ -918,17 +939,6 @@ PENS
 "pen-2" 1.0 0 -2674135 true "" "plot mean [ item 2 my-priorities ] of turtles"
 "pen-3" 1.0 0 -955883 true "" "plot mean [ item 3 my-priorities ] of turtles"
 "pen-4" 1.0 0 -6459832 true "" "plot mean [ item 4 my-priorities ] of turtles"
-
-SWITCH
-999
-237
-1107
-270
-expulsion
-expulsion
-0
-1
--1000
 
 SLIDER
 197
@@ -971,29 +981,64 @@ Issue-cost-type
 1
 
 CHOOSER
-543
-88
-692
-133
+533
+58
+682
+103
 optimization-resolution
 optimization-resolution
 1 0.5 0.1
-0
+2
 
 SLIDER
-802
-235
-974
-268
+800
+199
+972
+232
 catch-defection-rate
 catch-defection-rate
 0
 1
-0.5
+1.0
 .05
 1
 NIL
 HORIZONTAL
+
+CHOOSER
+797
+148
+935
+193
+defection-rate-type
+defection-rate-type
+"exo" "endo"
+0
+
+SLIDER
+790
+245
+999
+278
+default-permitted-defections
+default-permitted-defections
+0
+2
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+CHOOSER
+950
+157
+1088
+202
+defection-limit-type
+defection-limit-type
+"exo" "endo"
+0
 
 @#$#@#$#@
 ## PURPOSE
