@@ -468,10 +468,10 @@ to-report mutation-condition
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-1171
-26
-1300
-156
+970
+386
+1099
+516
 -1
 -1
 12.1
@@ -554,7 +554,7 @@ rng-seed
 rng-seed
 0
 10
-6.0
+5.0
 1
 1
 NIL
@@ -599,7 +599,7 @@ initial-IO-wealth
 initial-IO-wealth
 1
 100
-41.0
+1.0
 10
 1
 NIL
@@ -666,10 +666,10 @@ NIL
 HORIZONTAL
 
 PLOT
-11
-299
-239
-485
+10
+386
+218
+506
 IO net revenue
 NIL
 NIL
@@ -721,7 +721,7 @@ priority-vote-rate
 priority-vote-rate
 1
 100
-25.0
+15.0
 1
 1
 NIL
@@ -743,10 +743,10 @@ NIL
 HORIZONTAL
 
 PLOT
-258
-306
-542
-493
+235
+389
+458
+509
 Member utility
 NIL
 NIL
@@ -774,10 +774,10 @@ allocation-strategy
 0
 
 PLOT
-546
-307
-866
-512
+471
+388
+725
+508
 Member contributions
 NIL
 NIL
@@ -795,10 +795,10 @@ PENS
 "Median Contribution" 1.0 2 -955883 true "" "plot median [my-IO-contribution] of members"
 
 PLOT
-870
-292
-1140
-503
+748
+392
+947
+512
 Member median priorities
 NIL
 NIL
@@ -867,7 +867,7 @@ state-type-ratio
 state-type-ratio
 0
 1
-1.0
+0.0
 .01
 1
 NIL
@@ -897,7 +897,7 @@ uninhibited-shadow-future
 uninhibited-shadow-future
 0
 1
-0.75
+0.45
 .05
 1
 NIL
@@ -912,33 +912,11 @@ benefit-multiplier
 benefit-multiplier
 0
 10
-3.5
+3.8
 .1
 1
 NIL
 HORIZONTAL
-
-PLOT
-1148
-353
-1348
-503
-Mean Overall Priorities
-NIL
-NIL
-0.0
-10.0
-0.0
-10.0
-true
-false
-"" ""
-PENS
-"default" 1.0 0 -16777216 true "" "plot mean [item 0 my-priorities] of turtles"
-"pen-1" 1.0 0 -7500403 true "" "plot mean [ item 1 my-priorities ] of turtles"
-"pen-2" 1.0 0 -2674135 true "" "plot mean [ item 2 my-priorities ] of turtles"
-"pen-3" 1.0 0 -955883 true "" "plot mean [ item 3 my-priorities ] of turtles"
-"pen-4" 1.0 0 -6459832 true "" "plot mean [ item 4 my-priorities ] of turtles"
 
 SLIDER
 197
@@ -949,7 +927,7 @@ issue-cost-multiplier
 issue-cost-multiplier
 0
 2
-0.8
+2.0
 .1
 1
 NIL
@@ -964,7 +942,7 @@ member-cost-multiplier
 member-cost-multiplier
 0
 2
-0.3
+0.5
 .1
 1
 NIL
@@ -993,13 +971,13 @@ optimization-resolution
 SLIDER
 800
 199
-972
+943
 232
 catch-defection-rate
 catch-defection-rate
 0
 1
-1.0
+0.65
 .05
 1
 NIL
@@ -1012,32 +990,32 @@ CHOOSER
 193
 defection-rate-type
 defection-rate-type
-"exo" "endo"
+"exo"
 0
 
 SLIDER
-790
-245
-999
-278
+954
+200
+1163
+233
 default-permitted-defections
 default-permitted-defections
 0
 2
 1.0
-1
+.5
 1
 NIL
 HORIZONTAL
 
 CHOOSER
-950
-157
-1088
-202
+943
+147
+1081
+192
 defection-limit-type
 defection-limit-type
-"exo" "endo"
+"exo"
 0
 
 @#$#@#$#@
