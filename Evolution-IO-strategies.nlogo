@@ -20,6 +20,7 @@ globals [
   issue-index; a table that matches issue names with the array values that turtles use to store them
   voting-body ;All the members eligible to participate in a given vote
   priority-votes; a table containing the current votes for each issue
+  membership-votes; a table containing the current votes for each issue
   possible-membership-rules; for now, a list of membership rules for states to choose from
   active-membership-rules; the membership rules that are currently being used
   defection-limit
@@ -42,7 +43,9 @@ members-own [
   my-IO-contribution
   my-IO-payoffs ;how much the IO pays off for each issue area
   my-priority-vote ; the issue the state tells the IO to focus on
-  my-membership-vote
+  my-membership-vote ; what rules does this state want for new members
+  my-defection-monitoring-vote; how much of the IO's budget this state wants to go toward catching defection (and not the actual problem)
+  my-permitted-defections-vote; how many chances this state wants the IO to give defectors
   eligible-for-payout ; a boolean for whether or not the state was caught contributing less than the minimum
   my-times-caught ; how many times the state has been caught defecting
 ]
@@ -867,7 +870,7 @@ state-type-ratio
 state-type-ratio
 0
 1
-0.0
+1.0
 .01
 1
 NIL
@@ -927,7 +930,7 @@ issue-cost-multiplier
 issue-cost-multiplier
 0
 2
-2.0
+1.0
 .1
 1
 NIL
@@ -942,7 +945,7 @@ member-cost-multiplier
 member-cost-multiplier
 0
 2
-0.5
+0.2
 .1
 1
 NIL
@@ -1030,27 +1033,30 @@ ACTORS
 The models consists of 100 states (turtles) laid out on a 10 x 10 grid that does not wrap horizontically or vertically. Each state is either a member of non-member of an international organization intended to facilitate cooperation on across several possible issues. All states have 100 points to be distributed across 5 possible areas of cooperation, with more points corresponding to a higher level of precendence. They also receive a set income each tick which can either be saved or invested in the IO
 to try to increase the state's utility.
 
+In addition to issues preferences, each state also has preferences for the rules of the IO regarding membership and the punishment of defection.
+
 For now, the IO is represented through the observer, but it is helpful to thing of it
 as another actor, because it has its own decision making process and the ultimate goal
 of not going extinct.
 
 ## Process overview and scheduling
 
-Each tick can be divided into three main phases: planning, execution, and updating.
+Each tick can be divided into four main phases: voting, planning, execution, and updating.
+
+VOTING
+If voting is on, all votes occur here. Currently, the only fully implemented voting mechanism is the one to decide the issue area, but voting mechanisms for defection flexibility are also in development.
 
 PLANNING
-If voting is on, all votes occur here.
 In this stage, member states decide how much they will contribute to the IO.  For now, non-member states do not nothing in this stage.
 
-
 EXECUTION
-Here, all member states pay their previously determined contributions to the IO. The IO then allocates funds according to the IO spending submodel.
+Here, all member states pay their previously determined contributions to the IO. The IO catches some defectors according to the parameters that govern detection monitoring, and then allocates funds according to the IO spending submodel.
 
 UPDATING
 In this stage, the IO first updates its records of income and expenses. Members can then use this information to update their beliefs about the utility of the IO and leave if they do not believe it is worth it to continue.
 Similarly, non-members decide if they want to join the IO.
 
-Finally, states mutate by chance by shifting some of their preference points from one issue to another.
+Finally, states mutate by chance by shifting some of their preference points from one issue to another. 
 
 
 ## DESIGN CONCEPTS
@@ -1074,9 +1080,6 @@ The current implementation of learning is intentionally extremely simple: states
 STOCHASTICITY
 There are currently two main sources of stochasticity in the model: the initial distribution of preferences and the related mutation rate. 
 More stochasticity is added by using random numbers to determine which non-members join, but this is not essential to the model and may eventually be replaced.
-
-Another possible area of randomization is
-
 
 
 ## INTITIALIZATION
