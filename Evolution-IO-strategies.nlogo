@@ -63,10 +63,10 @@ to setup
 end
 
 ;Member states participate in a club goods game while nonmembers only have the option to join or not join
-;The organization does not have any autonomy and follows the determined rules exactly.
 to go
   if (IO-wealth <= 0 or (ticks >= simulation-length) or count members <= 1) [stop] ;stop if the IO goes bankrupt or time runs out
-  if (defection-limit-type = "exo") [set defection-limit default-permitted-defections ]
+  ;if endogenous flexibility behavior is ever implemented this section will neeed to be expanded upon
+  set defection-limit default-permitted-defections
   vote-rules-and-agenda ; can turn off voting by commenting this line out
   ask members [
     clear-payoffs
@@ -209,12 +209,11 @@ end
 
 ;observer context
 ;A way to relate the IO's cost of operation with the size of the organization.
-;1. "uniform" The costs never vary at all
-;2. "linear" Each additional member increases the cost by the same amount
+;For now, the default scaling is linear, but other options can be implemented by adding a chooser in the interface and if statements here, if desired
 to-report IO-variable-cost
   let n count members
-  if IO-costs-type = "uniform" [ report 0 ]
-  if IO-costs-type = "linear" [report n * member-cost-multiplier ]
+  ;linear
+  report n * structure-cost-multiplier
 end
 
 to allocate-IO-funds
@@ -240,14 +239,22 @@ end
 ;turtle context
 ;this should reflect a state's internal motivation to join the IO; for now just use chance
 to-report want-to-join
-  report random-float 1.0 < join-rate
+  report random-float 1.0 < apply-rate
 end
 
 ;turtle context
 ;first check that there are members and then analyze various attributes of the candidates
 to-report meet-criteria
-  ;report true
-  report item index first IO-priorities my-priorities >= 25 ;
+  let required-priority-level 0;
+  let low low-minimum-membership-priority
+  let high low + priority-threshold-difference
+  ifelse (
+    (membership-priority-meta = "always high") or
+    (membership-priority-meta = "higher beyond threshold" and count members >= membership-change-threshold) or
+    (membership-priority-meta = "lower beyond threshold" and count members < membership-change-threshold))
+    [set required-priority-level high]
+  [set required-priority-level low]
+  report item index first IO-priorities my-priorities >= required-priority-level
 end
 
 ;observer context
@@ -398,9 +405,10 @@ to join-institution
   set breed members
   set my-join-turn ticks
   set my-IO-contribution 0
-  ifelse (random-float 1.0 < state-type-ratio)
+  let uninhibited-sf inhibited-shadow-future + uninhibited-offset
+  ifelse (random-float 1.0 < state-type-fraction)
   [set my-shadow-future inhibited-shadow-future]
-  [set my-shadow-future uninhibited-shadow-future]
+  [set my-shadow-future uninhibited-sf]
   clear-payoffs
 end
 
@@ -435,7 +443,7 @@ end
 ;observer context
 to-report determine-voters
   let members-by-contribution reverse sort-on [my-IO-contribution] members
-  let IDs sublist members-by-contribution  0 (ceiling (percent-voting * count members))
+  let IDs sublist members-by-contribution  0 (ceiling (fraction-voting * count members))
   report members with [member? self IDs]
 end
 
@@ -452,7 +460,7 @@ to-report defection-percent [my-contribution]
   report (state-income - my-contribution) / state-income
 end
 
-;In more specialized simulations, we will be able to experiment with having variable issue costs, but for now to simplify things all the issues have the same cost
+;In more specialized simulations, we will be able to experiment with having variable issue costs, but for now to simplify things all the issues have the same cost.
 to-report issue-cost [issue]
   report count members * issue-cost-multiplier
 end
@@ -472,12 +480,12 @@ end
 @#$#@#$#@
 GRAPHICS-WINDOW
 970
-386
-1099
+363
+1122
 516
 -1
 -1
-12.1
+14.4
 1
 10
 1
@@ -498,10 +506,10 @@ ticks
 30.0
 
 BUTTON
-0
-20
-63
-53
+4
+10
+67
+43
 NIL
 setup
 NIL
@@ -515,10 +523,10 @@ NIL
 1
 
 BUTTON
-150
-14
-213
-47
+148
+10
+211
+43
 NIL
 go
 T
@@ -549,70 +557,25 @@ NIL
 1
 
 SLIDER
-239
+228
 15
-331
+320
 48
 rng-seed
 rng-seed
 0
 10
-5.0
+3.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-159
-62
-343
-95
-initial-membership-count
-initial-membership-count
-2
-100
-24.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-334
-15
-506
-48
-simulation-length
-simulation-length
-0
-10000
-5000.0
-50
-1
-NIL
-HORIZONTAL
-
-SLIDER
-16
-63
-140
-96
-initial-IO-wealth
-initial-IO-wealth
-1
-100
-1.0
-10
-1
-NIL
-HORIZONTAL
-
-SLIDER
-531
-14
-703
-47
+325
+194
+438
+227
 mutation-rate
 mutation-rate
 0
@@ -624,10 +587,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-16
-191
-188
-224
+666
+21
+765
+54
 IO-fixed-cost
 IO-fixed-cost
 0
@@ -639,25 +602,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-191
-194
-363
-227
-next-scope
-next-scope
-1
-5
-1.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-768
-14
-940
-47
+12
+105
+184
+138
 state-income
 state-income
 0
@@ -690,61 +638,6 @@ PENS
 "100" 1.0 0 -7500403 true "" "plot 100"
 "Investment Costs" 1.0 2 -955883 true "" "plot issue-cost first IO-priorities"
 
-CHOOSER
-3
-94
-141
-139
-IO-costs-type
-IO-costs-type
-"uniform" "linear"
-1
-
-SLIDER
-768
-94
-940
-127
-join-rate
-join-rate
-0
-.025
-0.001
-.001
-1
-NIL
-HORIZONTAL
-
-SLIDER
-947
-56
-1119
-89
-priority-vote-rate
-priority-vote-rate
-1
-100
-15.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-945
-17
-1117
-50
-percent-voting
-percent-voting
-.01
-1
-0.75
-.01
-1
-NIL
-HORIZONTAL
-
 PLOT
 235
 389
@@ -767,10 +660,10 @@ PENS
 "Median utility" 1.0 2 -955883 true "" "plot median [my-utility] of members"
 
 CHOOSER
-357
-60
-514
-105
+1023
+79
+1127
+124
 allocation-strategy
 allocation-strategy
 "first priority"
@@ -822,110 +715,95 @@ PENS
 "15" 1.0 0 -13345367 true "" "plot 15"
 
 SLIDER
-944
-98
-1117
-131
-membership-vote-rate
-membership-vote-rate
-0
-100
-1.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-768
-52
-940
+672
 85
+844
+118
 min-contribution
 min-contribution
 0
-10
+5
 2.0
-.05
+.25
 1
 NIL
 HORIZONTAL
 
 CHOOSER
-581
-120
-719
-165
+822
+152
+926
+197
 vote-type
 vote-type
 "plurality" "instant runoff"
 1
 
 SLIDER
-468
-253
-640
-286
-state-type-ratio
-state-type-ratio
+10
+188
+141
+221
+state-type-fraction
+state-type-fraction
 0
 1
-1.0
+0.85
 .01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-19
-247
-217
-280
+8
+145
+206
+178
 inhibited-shadow-future
 inhibited-shadow-future
 0
 1
-0.8
+0.85
 .01
 1
 NIL
 HORIZONTAL
 
 SLIDER
-235
-252
-447
-285
-uninhibited-shadow-future
-uninhibited-shadow-future
+257
+148
+434
+181
+uninhibited-offset
+uninhibited-offset
+-1
 0
-1
-0.45
+-0.4
 .05
 1
 NIL
 HORIZONTAL
 
 SLIDER
-373
-151
-545
-184
+1142
+24
+1267
+57
 benefit-multiplier
 benefit-multiplier
 0
-10
-3.8
+5
+3.6
 .1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-197
-149
-369
-182
+972
+21
+1137
+54
 issue-cost-multiplier
 issue-cost-multiplier
 0
@@ -937,12 +815,12 @@ NIL
 HORIZONTAL
 
 SLIDER
-15
-152
-189
-185
-member-cost-multiplier
-member-cost-multiplier
+779
+17
+958
+50
+structure-cost-multiplier
+structure-cost-multiplier
 0
 2
 0.2
@@ -952,55 +830,35 @@ NIL
 HORIZONTAL
 
 CHOOSER
-168
-98
-306
-143
-Issue-cost-type
-Issue-cost-type
-"uniform" "linear"
-1
-
-CHOOSER
-533
-58
-682
-103
+163
+186
+312
+231
 optimization-resolution
 optimization-resolution
 1 0.5 0.1
 2
 
 SLIDER
-800
-199
-943
-232
+825
+224
+968
+257
 catch-defection-rate
 catch-defection-rate
 0
 1
-0.65
+0.5
 .05
 1
 NIL
 HORIZONTAL
 
-CHOOSER
-797
-148
-935
-193
-defection-rate-type
-defection-rate-type
-"exo"
-0
-
 SLIDER
-954
-200
-1163
-233
+978
+225
+1187
+258
 default-permitted-defections
 default-permitted-defections
 0
@@ -1011,52 +869,211 @@ default-permitted-defections
 NIL
 HORIZONTAL
 
-CHOOSER
-943
-147
-1081
-192
-defection-limit-type
-defection-limit-type
-"exo"
+SLIDER
+712
+270
+945
+303
+low-minimum-membership-priority
+low-minimum-membership-priority
 0
+100
+0.0
+1
+1
+NIL
+HORIZONTAL
+
+CHOOSER
+1047
+162
+1231
+207
+membership-priority-meta
+membership-priority-meta
+"always high" "always low" "higher beyond threshold" "lower beyond threshold"
+1
+
+SLIDER
+623
+227
+807
+260
+membership-change-threshold
+membership-change-threshold
+0
+100
+20.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+982
+267
+1188
+300
+priority-threshold-difference
+priority-threshold-difference
+0
+30
+15.0
+1
+1
+NIL
+HORIZONTAL
+
+CHOOSER
+559
+10
+651
+55
+initial-IO-wealth
+initial-IO-wealth
+1 100
+0
+
+CHOOSER
+428
+11
+553
+56
+initial-membership-count
+initial-membership-count
+10 25 50 75 100
+0
+
+CHOOSER
+330
+10
+426
+55
+simulation-length
+simulation-length
+500 1000 2000 4000
+2
+
+SLIDER
+895
+87
+987
+120
+next-scope
+next-scope
+1
+5
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+CHOOSER
+211
+91
+303
+136
+apply-rate
+apply-rate
+0.01 0.1 0.5 1
+0
+
+CHOOSER
+940
+157
+1032
+202
+fraction-voting
+fraction-voting
+0.2 0.25 0.33 0.5 0.66 1
+3
+
+CHOOSER
+669
+145
+807
+190
+priority-vote-rate
+priority-vote-rate
+1 5 10 50 100
+2
 
 @#$#@#$#@
 ## PURPOSE
-This model is intended to explore the ways in which cooperation in international organizations changes as the preferences of the states that created the organization change.
+This model is intended to explore the ways in which cooperation in international organizations changes as the preferences of the states that created the organization change. Because the possible changes are dependent upon both the states' internal decision making processes the nature of the cooperation problem, and the rules of the IO, it is quite easy to overcomplicate the model by trying to consider all the possible combinations of these factors. As such, this particular model is intended to provide an interface and outline than can be expanded upon for more specialized simulations as desired.
 
 
 ## ENTITIES,STATE VARIABLES, AND SCALES
 
 ACTORS
 
-The models consists of 100 states (turtles) laid out on a 10 x 10 grid that does not wrap horizontically or vertically. Each state is either a member of non-member of an international organization intended to facilitate cooperation on across several possible issues. All states have 100 points to be distributed across 5 possible areas of cooperation, with more points corresponding to a higher level of precendence. They also receive a set income each tick which can either be saved or invested in the IO
-to try to increase the state's utility.
+The models consists of 100 states (turtles) laid out on a 10 x 10 grid. Each state is either a member of non-member of an international organization intended to facilitate cooperation on across several possible issues. All states have 100 points to be distributed across 5 possible areas of cooperation, with more points corresponding to a higher level of precendence. They also receive a set income each tick which can either be saved or invested in the IO to try to increase the state's utility. Currently, each state receives the same income per turn and consequently has the same potential to contribute to the organization.
 
-In addition to issues preferences, each state also has preferences for the rules of the IO regarding membership and the punishment of defection.
-
-For now, the IO is represented through the observer, but it is helpful to thing of it
-as another actor, because it has its own decision making process and the ultimate goal
-of not going extinct.
+The IO itself is represented by the observer. There are two main approaches to modeling the evolution of IOs: endogenous, where the rules are completely driven by the choices of the states, and exogenous, where the rules for the IO are explicitly controlled by the researcher. For reasons explained in the transition memo, this model focuses on the exogenous approach, and subdivides it into "static" cases where the rules do not change and "dynamic" cases where the IO is forced to evolve according to user-defined meta-rules.
 
 ## Process overview and scheduling
 
 Each tick can be divided into four main phases: voting, planning, execution, and updating.
 
-VOTING
+### VOTING
 If voting is on, all votes occur here. Currently, the only fully implemented voting mechanism is the one to decide the issue area, but voting mechanisms for defection flexibility are also in development.
 
-PLANNING
+### PLANNING
 In this stage, member states decide how much they will contribute to the IO.  For now, non-member states do not nothing in this stage.
 
-EXECUTION
+### EXECUTION
 Here, all member states pay their previously determined contributions to the IO. The IO catches some defectors according to the parameters that govern detection monitoring, and then allocates funds according to the IO spending submodel.
 
-UPDATING
+### UPDATING
 In this stage, the IO first updates its records of income and expenses. Members can then use this information to update their beliefs about the utility of the IO and leave if they do not believe it is worth it to continue.
 Similarly, non-members decide if they want to join the IO.
 
 Finally, states mutate by chance by shifting some of their preference points from one issue to another. 
+
+## INTERFACE
+As you have probably noticed, this model has many sliders and choosers to control the state- and simulation-level parameters. I have tried to group them by general purpose (Initial conditions at the top center, state variables in the bottom left, and IO rules and meta-rules on the right) but these divisions are imperfect because I also tried to keep closely-related parameters together. Many of the numeric choosers could also be sliders, but I felt that limiting the number of possibilities helps reduce the temptation to overtest the parameter space. Unless otherwise specified, there are not yet any default values for the numeric parameters, so those may need to be established for more systematic experimentation.
+
+### INITIAL CONDITIONS
+These should be fairly straightforward.
+**rng-seed** is explicit in order to replay interesting experiments.
+ 
+**simulation-length** controls the number of simulation rounds.
+
+**initial-IO-wealth** controls represents any resources the IO has at the beginning of the simulation period (because we are starting with an existent organization).
+
+**issue-cost-type** and **IO-cost-type** control how the cooperation problem and structural costs of the IO scale, respectively.
+
+**benefit-multiplier** controls how much the IO returns for investment in a given area once the cost-threshold is crossed
+
+
+### STATE PARAMETERS
+**state-income** is the total amount of "points" each state has at its disposable in a uniform distribution. If other distributions are added, it could potentially be modified to represent the mean or median income.
+
+**min-contribution** if a state gets caught contributing less than this amount it counts as a full defection. Contributions between the minimum and expected contributions are treated as partial defections.
+
+**apply-rate** is the rate at which non-members randomly apply for membership 
+
+**inhibited-shadow-future, uninhibited-offset, and state-type-fraction** controls how negatively states think defecting in one turn will impact their ability to benefit from the IO in the future (because of punishments, other states diminishing contributions, the IO collapsing, etc..) the inhibited-shadow future controls the parameter for more cautious states. Uninhibited-offset is a negative factor that is combined to allow for more short-sighted/risk-taking states, and state-type-fraction controls the rate at which states are assigned to one of the two types when they join the IO.
+
+**optimization-resolution** controls how finely divided the range of state contributions are. Lower resolutions increase the ability of states to maximize utility but also increase the amount of time for the calculation, so too fine of a grain can dramatically slow the simulation.
+
+### IO Rules and Meta-Rules
+**priority-vote-rate** is the number of ticks between votes on the next agenda
+
+**alocation-strategy** how the IO uses its available fundss to address issues on the agenda. For now, the only option is to put everything toward the number one priority, but the chooser is still there for if other options are added later.
+
+**next-scope** is the maximum number of issues the IO will try to tackle in the next session. Because of the default allocation strategy, it is best to keep simply this at 1 for now, but it can be altered mid-experiment if and once other allocation strategies are implemented to explore a new set of meta-rules.
+
+**fraction-voting** is how much of the membership participates in votes.
+
+**catch-defection-rate** governs how frequently the IO detects defection.
+
+**membership-priority-meta** has the rules about when and how the IO changes its membership requirements For now, there are two static options and two dynamic options that change the requirements when the threshold is crossed.
+
+**membership-change-threshold** is the trigger from the IO switching from one membership rule to another according to the meta-rule. For now, the threshold is based on the number of member states but other possible thresholds include net income and member defection rate. It is also conceivable to have multiple concurrent thresholds, but I did not find it necessary to include that for the conceptual demonstration.
+
+**priority-threshold-difference** is how much higher the high priority requirement is than the lower one
 
 
 ## DESIGN CONCEPTS
@@ -1089,32 +1106,35 @@ All states are initialized with the same level of wealth and then a user defined
 The model does not rely on external data.
 
 ## SUBMODELS
-VOTING
-Thw IO updates its rules on by asking the states to vote according to the voting procedure(s) every time the number of ticks is evenly divisible by the voting rate.
+
+### VOTING
+The IO updates its rules on by asking the states to vote according to the voting procedure(s) every time the number of ticks is evenly divisible by the voting rate.
 In the latest version, an instant-runoff vote is used to pick the single most popular issue as the focus of the organization.
 
-DECIDING CONTRIBUTION
+### DECIDING CONTRIBUTION
 States try to maximize an expected utility function that considers both the immediate utility of a given contribution and its future repercussions.  The state then samples values from the curve at a specified interval and picks the highest one. We should be able to smoothen the process by finding and using a calculus library.
 
 While the decision rules themselves are still being developed, they should consider how well the current IO's agenda matches their own preferences and how the structure of the IO and actions of other members have contributed to previous outcomes.
 
-IO SPENDING
+### IO SPENDING
 After receiving all payments, the organization first pays its expenses, and then, if necessary,diverts some of the funds to its reserve, which is an emergency fund of sorts in case its income is ever insufficient. With the remaining funds, the IO begins to put money into different problems according to its investment strategy. Once again, there are currently two very basic distribution options ("everything goes to highest preference" and "evenly split between all issues on agenda"), but only the second is compatible with the updated instant-runoff voting procedure. If the amount put toward a given issue exceeds the minimum threshold, the invested amount is scaled by the multiplier and payed out to each state's reward fund for that issue. If not, the reward is 0. 
 (Of course, a more robust allocation process might consider secondary issue areas with lower thresholds, but this is not a concern right now because all areas have the same costs.)
 
-MEMBER UTILITY
+### MEMBER UTILITY
 Currently, the utility  is captured 
 ((average of IO payouts * preference weights) - contribution) * 
 ((shadow of future) * (expected - contribution) / expected)
 to produce a different quadratic curve for each state that is weighted by its preferences, degree of defection as well as a subjective perception of the risks of defection.
-LEAVING IO
+
+### LEAVING IO
 Currently, there are two opportunities to leave the IO: the decide contribution step and the updating step. In both cases, this is a very simple comparison of the turns utility (expected in the first, actualy in the second) to the contribution, but the process can easily be adapted to consider other factors.
 
-JOINING IO
-Currently, a state answers this question by comparing a random value to the globally-defined join rate, but this is subject to change. If the answer is yes and they meet the membership requirements, they join.
+### JOINING IO
+There are two steps to joining the IO. First, a non-member state has to apply, which is currently represented by a simple "wants to join" function. If desired, this can be expanded by adding in a delay period or fleshing out how non-member states derive utility outside the IO.
+Once a state has decided it wants to join, the IO has to approve the application.
 
 
-MUTATION
+### MUTATION
 A uniform random value generator determines whether a state will mutate this tick. If the state is selected to mutate, it shifts some of its points from one issue area to another.
 
 
@@ -1124,7 +1144,7 @@ Rasul Dent
 Peter Carey
 Emily Ritter
 - ROCCA lab
-Last updated Feb 17, 2020
+Last updated April 30, 2020
 @#$#@#$#@
 default
 true
